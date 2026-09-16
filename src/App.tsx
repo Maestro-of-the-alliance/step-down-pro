@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { PixelArtSettings, ViewMode, AnimationFrame, SampleAnimationPreset } from './types';
+import { PixelArtSettings, ViewMode, AnimationFrame, SampleAnimationPreset, DetachMode } from './types';
 import { PALETTES } from './utils/palettes';
 import { SAMPLES } from './utils/samples';
 import { ANIMATION_PRESETS } from './utils/animationPresets';
@@ -10,6 +10,11 @@ import { Viewport } from './components/Viewport';
 import { ControlPanel } from './components/ControlPanel';
 import { PaletteDrawer } from './components/PaletteDrawer';
 import { AnimationTimeline } from './components/AnimationTimeline';
+import { DetachedWindow } from './components/DetachedWindow';
+import { DetachedPreviewContent } from './components/DetachedPreviewContent';
+import { DetachedPlaceholder } from './components/DetachedPlaceholder';
+import { FloatingPreview } from './components/FloatingPreview';
+import { ExternalLink } from 'lucide-react';
 
 const DEFAULT_SETTINGS: PixelArtSettings = {
   quality: 64, // 64px width default retro sweet spot
@@ -41,6 +46,10 @@ export default function App() {
   const [fps, setFps] = useState<number>(8);
   const [loop, setLoop] = useState<boolean>(true);
   const [onionSkin, setOnionSkin] = useState<boolean>(false);
+
+  // Detached Preview State
+  const [detachMode, setDetachMode] = useState<DetachMode>('none');
+  const [popupBlockedNotice, setPopupBlockedNotice] = useState<boolean>(false);
 
   // Render output cache for active display
   const [pixelResult, setPixelResult] = useState<RenderResult | null>(null);
@@ -500,6 +509,27 @@ export default function App() {
     }, 10);
   };
 
+  // Detach Handlers
+  const handleDetachWindow = () => {
+    setDetachMode('window');
+    setPopupBlockedNotice(false);
+  };
+
+  const handleDetachFloating = () => {
+    setDetachMode('floating');
+    setPopupBlockedNotice(false);
+  };
+
+  const handleReattach = () => {
+    setDetachMode('none');
+    setPopupBlockedNotice(false);
+  };
+
+  const handleWindowBlocked = () => {
+    setDetachMode('floating');
+    setPopupBlockedNotice(true);
+  };
+
   const activePalette = PALETTES.find((p) => p.id === settings.paletteId);
   const aspectRatio = sourceImage ? sourceImage.width / sourceImage.height : 1;
   const activeFrame = frames[activeFrameIndex];
@@ -527,6 +557,8 @@ export default function App() {
         paletteName={activePalette?.name || 'Custom'}
         paletteColors={activeFrame ? activeFrame.paletteColorsUsed : pixelResult ? pixelResult.paletteColorsUsed : []}
         frameCount={frames.length}
+        isDetached={detachMode !== 'none'}
+        onToggleDetach={() => (detachMode === 'none' ? handleDetachWindow() : handleReattach())}
         onUploadImage={handleLoadFile}
         onSelectSample={handleSelectSample}
         onResetSettings={handleResetSettings}
@@ -536,6 +568,37 @@ export default function App() {
 
       {/* Main Workspace Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-5 flex flex-col gap-4">
+        {/* Popup Notice Banner if browser restricted window popup */}
+        {popupBlockedNotice && (
+          <div className="px-4 py-3 rounded-xl bg-amber-950/80 border border-amber-500/40 text-amber-200 text-xs flex flex-wrap items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded bg-amber-500/20 text-amber-400 font-bold">!</span>
+              <span>
+                Browser popups are restricted in this preview frame. Switched to <strong>In-App Floating Window</strong>!
+                To pull the window directly to an external physical monitor, open this app in a separate browser tab.
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={window.location.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Open in New Tab</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setPopupBlockedNotice(false)}
+                className="px-2 py-1 text-slate-400 hover:text-slate-200 cursor-pointer"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Quality Banner Quick Indicator */}
         <div className="px-4 py-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2">
@@ -568,22 +631,40 @@ export default function App() {
         <div className="flex flex-col lg:flex-row gap-5 items-start">
           {/* Main Visual Display Viewport & Timeline Stack */}
           <div className="w-full lg:flex-1 flex flex-col gap-4">
-            <Viewport
-              pixelCanvas={finalDisplayCanvas}
-              sourceImage={sourceImage}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              showGrid={settings.pixelGrid}
-              onToggleGrid={() => updateSettings({ pixelGrid: !settings.pixelGrid })}
-              onDropFile={handleLoadFile}
-              isLoading={isLoading}
-              onionSkin={onionSkin}
-              onionSkinCanvas={onionSkinCanvas}
-              isPlaying={isPlaying}
-              activeFrameIndex={activeFrameIndex}
-              totalFrames={frames.length}
-              fps={fps}
-            />
+            {/* Viewport or Detached Command Center */}
+            {detachMode === 'none' ? (
+              <Viewport
+                pixelCanvas={finalDisplayCanvas}
+                sourceImage={sourceImage}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                showGrid={settings.pixelGrid}
+                onToggleGrid={() => updateSettings({ pixelGrid: !settings.pixelGrid })}
+                onDropFile={handleLoadFile}
+                isLoading={isLoading}
+                onionSkin={onionSkin}
+                onionSkinCanvas={onionSkinCanvas}
+                isPlaying={isPlaying}
+                activeFrameIndex={activeFrameIndex}
+                totalFrames={frames.length}
+                fps={fps}
+                onDetach={handleDetachWindow}
+              />
+            ) : (
+              <DetachedPlaceholder
+                pixelCanvas={finalDisplayCanvas}
+                quality={settings.quality}
+                paletteName={activePalette?.name || 'Custom'}
+                frameCount={frames.length}
+                activeFrameIndex={activeFrameIndex}
+                fps={fps}
+                isPlaying={isPlaying}
+                onReattach={handleReattach}
+                detachMode={detachMode}
+                onSwitchToFloating={handleDetachFloating}
+                onSwitchToWindow={handleDetachWindow}
+              />
+            )}
 
             {/* Animation Timeline Component */}
             <AnimationTimeline
@@ -634,6 +715,57 @@ export default function App() {
           />
         </div>
       </main>
+
+      {/* Popout OS Window */}
+      {detachMode === 'window' && (
+        <DetachedWindow
+          onClose={handleReattach}
+          onBlocked={handleWindowBlocked}
+        >
+          <DetachedPreviewContent
+            pixelCanvas={finalDisplayCanvas}
+            sourceImage={sourceImage}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            showGrid={settings.pixelGrid}
+            onToggleGrid={() => updateSettings({ pixelGrid: !settings.pixelGrid })}
+            onionSkin={onionSkin}
+            onionSkinCanvas={onionSkinCanvas}
+            isPlaying={isPlaying}
+            onTogglePlay={handleTogglePlay}
+            activeFrameIndex={activeFrameIndex}
+            totalFrames={frames.length}
+            fps={fps}
+            quality={settings.quality}
+            paletteName={activePalette?.name || 'Custom'}
+            onClose={handleReattach}
+            isExternalWindow={true}
+          />
+        </DetachedWindow>
+      )}
+
+      {/* In-App Floating PiP Window */}
+      {detachMode === 'floating' && (
+        <FloatingPreview
+          pixelCanvas={finalDisplayCanvas}
+          sourceImage={sourceImage}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          showGrid={settings.pixelGrid}
+          onToggleGrid={() => updateSettings({ pixelGrid: !settings.pixelGrid })}
+          onionSkin={onionSkin}
+          onionSkinCanvas={onionSkinCanvas}
+          isPlaying={isPlaying}
+          onTogglePlay={handleTogglePlay}
+          activeFrameIndex={activeFrameIndex}
+          totalFrames={frames.length}
+          fps={fps}
+          quality={settings.quality}
+          paletteName={activePalette?.name || 'Custom'}
+          onClose={handleReattach}
+          onPopoutToWindow={handleDetachWindow}
+        />
+      )}
     </div>
   );
 }

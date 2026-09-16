@@ -10,7 +10,9 @@ import {
   RotateCcw,
   Sliders,
   Maximize2,
-  Film
+  Film,
+  Monitor,
+  ExternalLink
 } from 'lucide-react';
 import { SAMPLES } from '../utils/samples';
 import { downloadPixelArt, copyPixelArtToClipboard, downloadPaletteImage } from '../utils/exportUtils';
@@ -22,6 +24,8 @@ interface HeaderProps {
   paletteName: string;
   paletteColors: [number, number, number][];
   frameCount?: number;
+  isDetached?: boolean;
+  onToggleDetach?: () => void;
   onUploadImage: (file: File) => void;
   onSelectSample: (sampleId: string) => void;
   onResetSettings: () => void;
@@ -36,6 +40,8 @@ export const Header: React.FC<HeaderProps> = ({
   paletteName,
   paletteColors,
   frameCount = 1,
+  isDetached = false,
+  onToggleDetach,
   onUploadImage,
   onSelectSample,
   onResetSettings,
@@ -169,6 +175,24 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
+
+          {/* Detach Window Button */}
+          {onToggleDetach && (
+            <button
+              id="header-detach-btn"
+              type="button"
+              onClick={onToggleDetach}
+              title={isDetached ? 'Re-attach preview window' : 'Detach preview to another display'}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                isDetached
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-semibold'
+                  : 'bg-slate-900 hover:bg-slate-800 text-slate-300 border-slate-700/80 hover:text-emerald-300'
+              }`}
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">{isDetached ? 'Detached' : 'Detach'}</span>
+            </button>
+          )}
 
           {/* Export & Copy Dropdown */}
           <div className="relative">

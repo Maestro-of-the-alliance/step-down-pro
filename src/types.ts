@@ -4,6 +4,8 @@ export type PixelStyle = 'square' | 'scanlines' | 'crt' | 'dots' | 'mosaic';
 
 export type ViewMode = 'pixel' | 'split' | 'side-by-side' | 'original';
 
+export type DetachMode = 'none' | 'window' | 'floating';
+
 export interface Palette {
   id: string;
   name: string;

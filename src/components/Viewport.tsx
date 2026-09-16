@@ -8,7 +8,9 @@ import {
   Columns,
   Image as ImageIcon,
   Sparkles,
-  UploadCloud
+  UploadCloud,
+  ExternalLink,
+  Monitor
 } from 'lucide-react';
 import { ViewMode } from '../types';
 
@@ -27,6 +29,7 @@ interface ViewportProps {
   activeFrameIndex?: number;
   totalFrames?: number;
   fps?: number;
+  onDetach?: () => void;
 }
 
 export const Viewport: React.FC<ViewportProps> = ({
@@ -44,6 +47,7 @@ export const Viewport: React.FC<ViewportProps> = ({
   activeFrameIndex = 0,
   totalFrames = 1,
   fps = 8,
+  onDetach,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -262,6 +266,22 @@ export const Viewport: React.FC<ViewportProps> = ({
           >
             <ZoomIn className="w-3.5 h-3.5" />
           </button>
+
+          {onDetach && (
+            <>
+              <div className="w-[1px] h-4 bg-slate-800 my-auto" />
+              <button
+                id="detach-preview-btn"
+                type="button"
+                onClick={onDetach}
+                title="Detach preview to separate window (drag to another display)"
+                className="px-2 py-1 rounded-lg text-xs font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 flex items-center gap-1 transition-all cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span className="hidden md:inline">Detach</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
