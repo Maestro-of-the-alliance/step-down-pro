@@ -1,0 +1,6 @@
+{
+  "name": "Pixel Art Converter",
+  "description": "Convert images into authentic pixel art and create looping animations by sequencing frames with custom frame rates and retro palettes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
