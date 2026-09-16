@@ -1,20 +1,16 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# step-down-pro
+the pixelator you didn't know you needed
 
-# Run and deploy your AI Studio app
+PapaDOMO pixel-art conversion tool, scaffolded via Gemini App Builder (AI Studio).
 
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/844e452d-1730-492e-b90f-096598fe83a5
+View the original app scaffold: https://ai.studio/apps/844e452d-1730-492e-b90f-096598fe83a5
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Set the `GEMINI_API_KEY` in `.env.local` to your Gemini API key
 3. Run the app:
    `npm run dev`
