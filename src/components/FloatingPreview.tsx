@@ -30,6 +30,7 @@ interface FloatingPreviewProps {
   paletteName?: string;
   onClose: () => void;
   onPopoutToWindow?: () => void;
+  onOpenDetachedTab?: () => void;
 }
 
 export const FloatingPreview: React.FC<FloatingPreviewProps> = ({
@@ -50,6 +51,7 @@ export const FloatingPreview: React.FC<FloatingPreviewProps> = ({
   paletteName = 'Pico-8',
   onClose,
   onPopoutToWindow,
+  onOpenDetachedTab,
 }) => {
   const [position, setPosition] = useState<{ x: number; y: number }>({
     x: Math.max(20, window.innerWidth - 680),
@@ -122,14 +124,25 @@ export const FloatingPreview: React.FC<FloatingPreviewProps> = ({
         </div>
 
         <div className="flex items-center gap-1">
+          {onOpenDetachedTab && (
+            <button
+              type="button"
+              onClick={onOpenDetachedTab}
+              title="Open live-synced preview in new tab (for multi-display)"
+              className="p-1 rounded-md text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           {onPopoutToWindow && (
             <button
               type="button"
               onClick={onPopoutToWindow}
-              title="Pop out to separate OS window (for secondary monitor)"
-              className="p-1 rounded-md text-slate-400 hover:text-emerald-400 hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Pop out to separate OS window"
+              className="p-1 rounded-md text-slate-400 hover:text-sky-400 hover:bg-slate-800 transition-colors cursor-pointer"
             >
-              <ExternalLink className="w-3.5 h-3.5" />
+              <Monitor className="w-3.5 h-3.5" />
             </button>
           )}
 

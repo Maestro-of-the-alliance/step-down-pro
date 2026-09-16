@@ -25,6 +25,7 @@ interface DetachedPlaceholderProps {
   detachMode: DetachMode;
   onSwitchToFloating?: () => void;
   onSwitchToWindow?: () => void;
+  onOpenDetachedTab?: () => void;
 }
 
 export const DetachedPlaceholder: React.FC<DetachedPlaceholderProps> = ({
@@ -40,6 +41,7 @@ export const DetachedPlaceholder: React.FC<DetachedPlaceholderProps> = ({
   detachMode,
   onSwitchToFloating,
   onSwitchToWindow,
+  onOpenDetachedTab,
 }) => {
   const miniCanvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -117,6 +119,17 @@ export const DetachedPlaceholder: React.FC<DetachedPlaceholderProps> = ({
             >
               <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
               <span>Bring Window to Front</span>
+            </button>
+          )}
+
+          {onOpenDetachedTab && (
+            <button
+              type="button"
+              onClick={onOpenDetachedTab}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Open in New Tab</span>
             </button>
           )}
 

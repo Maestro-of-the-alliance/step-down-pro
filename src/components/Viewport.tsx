@@ -30,6 +30,7 @@ interface ViewportProps {
   totalFrames?: number;
   fps?: number;
   onDetach?: () => void;
+  onOpenDetachedTab?: () => void;
 }
 
 export const Viewport: React.FC<ViewportProps> = ({
@@ -48,6 +49,7 @@ export const Viewport: React.FC<ViewportProps> = ({
   totalFrames = 1,
   fps = 8,
   onDetach,
+  onOpenDetachedTab,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -281,6 +283,19 @@ export const Viewport: React.FC<ViewportProps> = ({
                 <span className="hidden md:inline">Detach</span>
               </button>
             </>
+          )}
+
+          {onOpenDetachedTab && (
+            <button
+              id="open-tab-preview-btn"
+              type="button"
+              onClick={onOpenDetachedTab}
+              title="Open live-synced viewer in new tab"
+              className="px-2 py-1 rounded-lg text-xs font-medium text-sky-400 hover:text-sky-300 hover:bg-sky-500/10 flex items-center gap-1 transition-all cursor-pointer"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span className="hidden lg:inline">New Tab</span>
+            </button>
           )}
         </div>
       </div>

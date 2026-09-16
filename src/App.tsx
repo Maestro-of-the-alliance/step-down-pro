@@ -14,6 +14,14 @@ import { DetachedWindow } from './components/DetachedWindow';
 import { DetachedPreviewContent } from './components/DetachedPreviewContent';
 import { DetachedPlaceholder } from './components/DetachedPlaceholder';
 import { FloatingPreview } from './components/FloatingPreview';
+import { StandaloneDetachedViewer } from './components/StandaloneDetachedViewer';
+import {
+  BROADCAST_CHANNEL_NAME,
+  STORAGE_BACKUP_KEY,
+  StudioSyncPayload,
+  BroadcastMessage,
+  sendBroadcastMessage,
+} from './utils/broadcastSync';
 import { ExternalLink } from 'lucide-react';
 
 const DEFAULT_SETTINGS: PixelArtSettings = {
@@ -32,7 +40,7 @@ const DEFAULT_SETTINGS: PixelArtSettings = {
   pixelGrid: false,
 };
 
-export default function App() {
+function StudioApp() {
   const [settings, setSettings] = useState<PixelArtSettings>(DEFAULT_SETTINGS);
   const [viewMode, setViewMode] = useState<ViewMode>('pixel');
   const [sourceImage, setSourceImage] = useState<HTMLImageElement | null>(null);
@@ -547,6 +555,139 @@ export default function App() {
       ? frames[prevFrameIndex].pixelCanvas
       : null;
 
+  // Broadcast Channel setup for live syncing with detached tabs
+  const broadcastChannelRef = useRef<BroadcastChannel | null>(null);
+
+  const handleOpenDetachedTab = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('detached', 'true');
+    window.open(url.toString(), '_blank');
+  }, []);
+
+  // Helper to send current studio state across BroadcastChannel and localStorage
+  const sendCurrentSyncState = useCallback(() => {
+    let renderedPixelDataUrl: string | null = null;
+    try {
+      if (finalDisplayCanvas) {
+        renderedPixelDataUrl = finalDisplayCanvas.toDataURL('image/png');
+      }
+    } catch (e) {
+      console.warn('Canvas export error:', e);
+    }
+
+    let onionSkinDataUrl: string | null = null;
+    try {
+      if (onionSkinCanvas) {
+        onionSkinDataUrl = onionSkinCanvas.toDataURL('image/png');
+      }
+    } catch (e) {}
+
+    const payload: StudioSyncPayload = {
+      settings,
+      viewMode,
+      paletteName: activePalette?.name || 'Custom',
+      paletteColors: activeFrame ? activeFrame.paletteColorsUsed : (pixelResult?.paletteColorsUsed || []),
+      activeFrameIndex,
+      totalFrames: frames.length,
+      fps,
+      isPlaying,
+      onionSkin,
+      sourceImageUrl: sourceImage?.src || null,
+      renderedPixelDataUrl,
+      onionSkinDataUrl,
+      dimensions: currentPixelDims,
+      timestamp: Date.now(),
+    };
+
+    sendBroadcastMessage(broadcastChannelRef.current, {
+      type: 'STUDIO_STATE_UPDATE',
+      payload,
+    });
+  }, [
+    finalDisplayCanvas,
+    onionSkinCanvas,
+    settings,
+    viewMode,
+    activePalette,
+    activeFrame,
+    pixelResult,
+    activeFrameIndex,
+    frames.length,
+    fps,
+    isPlaying,
+    onionSkin,
+    sourceImage,
+    currentPixelDims,
+  ]);
+
+  const sendSyncStateRef = useRef(sendCurrentSyncState);
+  sendSyncStateRef.current = sendCurrentSyncState;
+
+  useEffect(() => {
+    let channel: BroadcastChannel | null = null;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        channel = new BroadcastChannel(BROADCAST_CHANNEL_NAME);
+        broadcastChannelRef.current = channel;
+      }
+    } catch (e) {
+      console.warn('BroadcastChannel error:', e);
+    }
+
+    const handleMessage = (e: MessageEvent<BroadcastMessage>) => {
+      if (e.data && e.data.type === 'REQUEST_SYNC') {
+        sendSyncStateRef.current();
+      }
+    };
+
+    if (channel) {
+      channel.onmessage = handleMessage;
+    }
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === STORAGE_BACKUP_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed?.message?.type === 'REQUEST_SYNC') {
+            sendSyncStateRef.current();
+          }
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // Heartbeat every 1000ms
+    const heartbeatInterval = setInterval(() => {
+      sendBroadcastMessage(broadcastChannelRef.current, {
+        type: 'HEARTBEAT',
+        timestamp: Date.now(),
+      });
+    }, 1000);
+
+    const handleBeforeUnload = () => {
+      sendBroadcastMessage(broadcastChannelRef.current, {
+        type: 'STUDIO_DISCONNECT',
+      });
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      clearInterval(heartbeatInterval);
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      handleBeforeUnload();
+      if (channel) channel.close();
+    };
+  }, []);
+
+  // Broadcast whenever state or rendered frame changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      sendCurrentSyncState();
+    }, 20);
+    return () => clearTimeout(timer);
+  }, [sendCurrentSyncState]);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-300">
       {/* Top Application Bar */}
@@ -575,19 +716,18 @@ export default function App() {
               <span className="p-1 rounded bg-amber-500/20 text-amber-400 font-bold">!</span>
               <span>
                 Browser popups are restricted in this preview frame. Switched to <strong>In-App Floating Window</strong>!
-                To pull the window directly to an external physical monitor, open this app in a separate browser tab.
+                To view on a secondary display, open the live-synced viewer tab.
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <a
-                href={window.location.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
+              <button
+                type="button"
+                onClick={handleOpenDetachedTab}
+                className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer shadow-md"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
-                <span>Open in New Tab</span>
-              </a>
+                <span>Open Live-Synced Tab</span>
+              </button>
               <button
                 type="button"
                 onClick={() => setPopupBlockedNotice(false)}
@@ -649,6 +789,7 @@ export default function App() {
                 totalFrames={frames.length}
                 fps={fps}
                 onDetach={handleDetachWindow}
+                onOpenDetachedTab={handleOpenDetachedTab}
               />
             ) : (
               <DetachedPlaceholder
@@ -663,6 +804,7 @@ export default function App() {
                 detachMode={detachMode}
                 onSwitchToFloating={handleDetachFloating}
                 onSwitchToWindow={handleDetachWindow}
+                onOpenDetachedTab={handleOpenDetachedTab}
               />
             )}
 
@@ -764,9 +906,24 @@ export default function App() {
           paletteName={activePalette?.name || 'Custom'}
           onClose={handleReattach}
           onPopoutToWindow={handleDetachWindow}
+          onOpenDetachedTab={handleOpenDetachedTab}
         />
       )}
     </div>
   );
 }
+
+export default function App() {
+  const isDetachedViewer =
+    typeof window !== 'undefined' &&
+    (new URLSearchParams(window.location.search).get('detached') === 'true' ||
+      window.location.hash.includes('detached=true'));
+
+  if (isDetachedViewer) {
+    return <StandaloneDetachedViewer />;
+  }
+
+  return <StudioApp />;
+}
+
 
