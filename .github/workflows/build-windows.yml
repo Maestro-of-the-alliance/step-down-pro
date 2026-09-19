@@ -76,6 +76,16 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Google removed the legacy 'tools' package from the SDK
+          # repository server-side (as of mid-September 2026), which
+          # broke this action's own default packages list ('tools
+          # platform-tools') across many unrelated projects, not just
+          # this one -- sdkmanager exits 1 immediately trying to fetch
+          # a package that no longer exists. platform-tools alone is
+          # sufficient; Gradle/AGP fetches whatever platform and
+          # build-tools versions it actually needs on demand.
+          packages: "platform-tools"
 
       - name: Set up Android NDK
         uses: nttld/setup-ndk@v1
