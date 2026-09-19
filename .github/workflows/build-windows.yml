@@ -1,4 +1,4 @@
-name: Build and Release Windows App
+name: Build and Release Apps
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  publish-tauri:
+  publish-windows:
     permissions:
       contents: write
     runs-on: windows-latest
@@ -39,5 +39,69 @@ jobs:
           tagName: step-down-pro-v__VERSION__
           releaseName: "Step Down Pro v__VERSION__"
           releaseBody: "PapaDOMO Pixel Art Converter — free ALLIANCE desktop app. Download the .msi or .exe below, run it, done."
+          releaseDraft: false
+          prerelease: false
+
+  publish-android:
+    needs: publish-windows
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust build cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: Install Android Rust targets
+        run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26d
+          link-to-sdk: true
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      # No signing keystore configured yet -- this produces a
+      # debug-signed APK, which installs fine via direct download /
+      # side-loading (our actual distribution path right now) but
+      # would need a real keystore + secrets before ever submitting to
+      # the Play Store.
+      - name: Build and publish (Android)
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+        with:
+          mobile: android
+          args: --apk
+          tagName: step-down-pro-v__VERSION__
+          releaseName: "Step Down Pro v__VERSION__"
+          releaseBody: "PapaDOMO Pixel Art Converter — free ALLIANCE desktop app. Download the .msi/.exe (Windows) or .apk (Android) below, run it, done."
           releaseDraft: false
           prerelease: false
